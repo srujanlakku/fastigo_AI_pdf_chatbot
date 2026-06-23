@@ -1,111 +1,454 @@
 # Fastigo AI PDF Chatbot
 
-A Streamlit RAG application for grounded PDF Q&A using Gemini 2.5 Flash, Gemini embeddings, ChromaDB, and hybrid retrieval.
+A Retrieval-Augmented Generation (RAG) based PDF Question Answering application built with Streamlit, Gemini 2.5 Flash, Gemini Embeddings, ChromaDB, and LangChain.
 
-## Features
+The application enables users to upload one or more PDF documents and ask natural language questions about their contents. Answers are generated using retrieved document context and include page-level citations and supporting excerpts.
 
-- Upload single or multiple PDFs
-- OCR fallback for image-only pages (configurable)
-- Text extraction with page numbers and metadata
-- Chunking with 1,000-character windows and 200-character overlap
-- Gemini embeddings stored in persistent ChromaDB
-- Hybrid semantic + BM25 retrieval with score fusion and MMR diversification
-- Streaming Gemini answers in the UI
-- Session-based chat history with follow-up context
-- Source citations with filename, page number, and excerpt cards
-- Docker-ready deployment with Tesseract OCR support
+---
 
-## Architecture
+# Features
+
+## Core Features
+
+* Upload single or multiple PDF documents
+* PDF text extraction using PyMuPDF
+* OCR fallback for scanned/image-based PDFs
+* Gemini-powered question answering
+* Persistent vector storage using ChromaDB
+* Session-based conversation memory
+* Source attribution with page references
+* Supporting excerpts for answer verification
+* Streaming responses
+* Hybrid retrieval (Semantic Search + BM25)
+* MMR-based context diversification
+
+## Bonus Features
+
+* Multi-PDF support
+* OCR support
+* Docker deployment
+* Hybrid search
+* Conversation memory
+* Streaming responses
+* Professional Streamlit UI
+
+---
+
+# Architecture
 
 ```mermaid
 flowchart TB
-  A[Streamlit UI] --> B[Upload PDFs]
-  B --> C[Ingestion Guard + Hashing]
-  C --> D[PDF Processor]
-  D --> E[OCR Processor]
-  D --> F[Chunking & Metadata]
-  F --> G[Embedding Service]
-  G --> H[ChromaDB]
-  H --> I[Hybrid Retriever]
-  I --> J[Semantic Search]
-  I --> K[BM25 Search]
-  I --> L[Score Fusion + MMR]
-  L --> M[Gemini Answer Generation]
-  M --> A
+
+A[User Uploads PDFs]
+--> B[PDF Processor]
+
+B --> C[OCR Processor]
+
+B --> D[Text Extraction]
+
+D --> E[Chunking]
+
+E --> F[Gemini Embeddings]
+
+F --> G[ChromaDB]
+
+H[User Question]
+--> I[Hybrid Retriever]
+
+I --> G
+
+I --> J[Semantic Search]
+
+I --> K[BM25 Search]
+
+J --> L[Score Fusion]
+
+K --> L
+
+L --> M[MMR Diversification]
+
+M --> N[Gemini 2.5 Flash]
+
+N --> O[Answer + Citations + Excerpts]
+
+O --> P[Streamlit UI]
 ```
 
-## Chunking Strategy
+---
 
-- Page-level text is split into overlapping chunks.
-- Default window: **1,000 characters**
-- Default overlap: **200 characters**
-- Splits prefer word boundaries to avoid mid-word cuts.
-- Each chunk stores `file_name`, `page_number`, `chunk_id`, and `file_hash`.
+# Design Decisions
 
-## Embedding Strategy
+## Why Streamlit?
 
-- Model: `gemini-embedding-001` (configurable)
-- Output dimensionality: **768** by default via `EMBEDDING_DIMENSION`
-- Embeddings are generated during indexing with `embed_texts()`
-- Query embeddings use the same model and dimensionality as document embeddings
-- ChromaDB stores explicit embedding vectors to avoid dimension mismatch
+Streamlit provides a fast and efficient way to build interactive AI applications with built-in support for:
 
-## Retrieval Strategy
+* File uploads
+* Session management
+* Chat interfaces
+* Rapid deployment
 
-1. **Semantic search** — Gemini query embedding against Chroma vectors
-2. **BM25 search** — keyword retrieval over the full indexed corpus
-3. **Score fusion** — combines semantic similarity and BM25 with reciprocal-rank contributions
-4. **MMR diversification** — reduces redundant chunks in the final context window
+This allowed rapid development while maintaining a clean user experience.
 
-## Prompt Design
+### Why Gemini 2.5 Flash?
 
-- System prompt enforces grounded answers only from retrieved context
-- Requires citations with filename and page number
-- Uses a safe fallback when information is unavailable
-- Injects prior conversation history for follow-up questions
+Gemini 2.5 Flash was selected because it offers:
 
-## OCR Explanation
+* Low latency inference
+* Strong reasoning capabilities
+* Cost-effective API usage
+* Excellent integration with Gemini embeddings
 
-- OCR runs only when `PDF_OCR_ENABLED=True`
-- Triggered for pages where PyMuPDF text extraction returns empty content
-- Uses Tesseract via `pytesseract`
-- Temporary image files are deleted after OCR
-- Docker image installs `tesseract-ocr` automatically
+### Why ChromaDB?
 
-## Setup
+ChromaDB was selected as the vector database because it:
 
-1. Clone the repository
-2. Create a Python 3.11+ environment
-3. Install dependencies:
+* Provides persistent vector storage
+* Integrates seamlessly with LangChain
+* Requires minimal infrastructure
+* Supports efficient similarity search
+
+### Why Hybrid Retrieval?
+
+Pure vector search may miss exact keywords, while keyword search may miss semantic meaning.
+
+Combining both approaches improves retrieval quality and answer accuracy.
+
+### Why OCR Support?
+
+Many PDFs are scanned documents containing images rather than selectable text.
+
+OCR ensures these documents remain searchable and usable by the chatbot.
+
+### Why Source Attribution?
+
+Every answer includes page-level citations and supporting excerpts.
+
+This improves:
+
+* Transparency
+* Explainability
+* User trust
+* Answer verification
+
+---
+
+# Chunking Strategy
+
+Large Language Models cannot efficiently process entire PDF documents due to context window limitations.
+
+To solve this problem, the application splits extracted document text into smaller chunks before generating embeddings.
+
+The system uses:
+
+```python
+RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=200
+)
+```
+
+### Why This Configuration?
+
+#### Chunk Size: 1000 Characters
+
+Provides sufficient contextual information while remaining efficient for embedding generation and retrieval.
+
+#### Chunk Overlap: 200 Characters
+
+Preserves context across chunk boundaries and reduces information loss.
+
+### Metadata Stored Per Chunk
+
+Each chunk stores:
+
+* File Name
+* Page Number
+* Chunk ID
+* File Hash
+
+This metadata enables accurate source attribution during question answering.
+
+### Benefits
+
+* Improved retrieval accuracy
+* Better contextual continuity
+* Reduced information loss
+* Reliable page-level citations
+
+---
+
+# Embedding Model Choice
+
+The application uses:
+
+**Gemini Embedding Model**
+
+```text
+gemini-embedding-001
+```
+
+### Why Gemini Embeddings?
+
+Gemini embeddings provide high-quality semantic representations and integrate naturally with Gemini-based answer generation.
+
+Benefits include:
+
+* Strong semantic understanding
+* Consistent embedding space
+* Reliable retrieval performance
+* Native compatibility with Gemini ecosystem
+
+### Embedding Workflow
+
+1. PDF text is extracted.
+2. Text is chunked.
+3. Chunks are embedded.
+4. Embeddings are stored in ChromaDB.
+5. User questions are embedded.
+6. Similar chunks are retrieved.
+
+### Storage Strategy
+
+Embeddings are persisted in ChromaDB to:
+
+* Avoid repeated embedding generation
+* Improve performance
+* Reduce API costs
+
+---
+
+# Retrieval Approach
+
+The application uses a Hybrid Retrieval Architecture.
+
+## Step 1: Semantic Retrieval
+
+User queries are converted into embeddings.
+
+ChromaDB performs vector similarity search to identify semantically relevant document chunks.
+
+Best for:
+
+* Natural language questions
+* Conceptual queries
+* Paraphrased requests
+
+---
+
+## Step 2: BM25 Keyword Retrieval
+
+BM25 retrieval searches the indexed corpus using keyword matching.
+
+Best for:
+
+* Technical terms
+* Product names
+* Numerical values
+* Exact document references
+
+---
+
+## Step 3: Hybrid Score Fusion
+
+Results from semantic retrieval and BM25 retrieval are combined.
+
+Benefits:
+
+* Higher recall
+* Better precision
+* More robust retrieval
+
+---
+
+## Step 4: MMR Diversification
+
+Maximum Marginal Relevance (MMR) is applied to:
+
+* Remove redundant chunks
+* Improve context diversity
+* Increase answer quality
+
+---
+
+## Retrieval Pipeline
+
+```text
+PDF Upload
+    ↓
+Text Extraction
+    ↓
+Chunking
+    ↓
+Gemini Embeddings
+    ↓
+ChromaDB Storage
+    ↓
+User Query
+    ↓
+Hybrid Retrieval
+(Vector + BM25)
+    ↓
+MMR Diversification
+    ↓
+Gemini 2.5 Flash
+    ↓
+Answer Generation
+    ↓
+Source Attribution
+```
+
+---
+
+# Prompt Design
+
+The application follows a Retrieval-Augmented Generation (RAG) approach.
+
+The language model is instructed to answer only using retrieved document context.
+
+## Prompt Objectives
+
+The prompt is designed to:
+
+1. Prevent hallucinations
+2. Restrict responses to document content
+3. Provide citations
+4. Improve answer trustworthiness
+5. Handle missing information gracefully
+
+## Core Rules
+
+The model is instructed to:
+
+* Answer only from retrieved context
+* Never fabricate information
+* Never use external knowledge
+* Always cite source pages
+* Always cite source documents
+* Include supporting excerpts
+
+## Fallback Response
+
+When relevant information cannot be found:
+
+> I could not find this information in the uploaded documents.
+
+This ensures factual reliability and prevents hallucinated answers.
+
+## Conversation Context
+
+Previous conversation history is included to support:
+
+* Follow-up questions
+* Multi-turn conversations
+* Better contextual understanding
+
+while remaining grounded in retrieved document content.
+
+---
+
+# OCR Support
+
+OCR is used when a PDF page contains no machine-readable text.
+
+The application:
+
+1. Detects empty pages.
+2. Converts pages into images.
+3. Uses Tesseract OCR for text extraction.
+4. Cleans temporary files.
+5. Continues normal indexing.
+
+OCR can be enabled or disabled using:
+
+```env
+PDF_OCR_ENABLED=True
+```
+
+---
+
+# Environment Variables
+
+| Variable            | Description           |
+| ------------------- | --------------------- |
+| GOOGLE_API_KEY      | Gemini API Key        |
+| GOOGLE_API_PROJECT  | Optional GCP Project  |
+| GOOGLE_API_LOCATION | Gemini Region         |
+| CHROMA_DB_DIR       | ChromaDB Storage Path |
+| MODEL_NAME          | Gemini Model          |
+| EMBEDDING_MODEL     | Embedding Model       |
+| EMBEDDING_DIMENSION | Embedding Size        |
+| PDF_OCR_ENABLED     | Enable OCR            |
+| MAX_FILE_SIZE_MB    | Maximum Upload Size   |
+
+---
+
+# Setup Instructions
+
+## Clone Repository
+
+```bash
+git clone https://github.com/srujanlakku/fastigo_AI_pdf_chatbot.git
+
+cd fastigo_AI_pdf_chatbot
+```
+
+## Create Virtual Environment
+
+```bash
+python -m venv .venv
+```
+
+### Windows
+
+```bash
+.venv\Scripts\activate
+```
+
+### Linux / Mac
+
+```bash
+source .venv/bin/activate
+```
+
+## Install Dependencies
 
 ```bash
 pip install -r requirements.txt
+
 pip install -r requirements-dev.txt
 ```
 
-4. Copy `.env.example` to `.env` and configure your environment
+## Configure Environment
 
-## Environment Variables
+Create:
 
-| Variable | Description |
-|----------|-------------|
-| `GOOGLE_API_KEY` | Required Gemini API key |
-| `GOOGLE_API_PROJECT` | Optional GCP project ID |
-| `GOOGLE_API_LOCATION` | Gemini region (default `us-central1`) |
-| `CHROMA_DB_DIR` | Local ChromaDB path |
-| `MODEL_NAME` | Chat model (default `gemini-2.5-flash`) |
-| `EMBEDDING_MODEL` | Embedding model (default `gemini-embedding-001`) |
-| `EMBEDDING_DIMENSION` | Embedding size (default `768`) |
-| `PDF_OCR_ENABLED` | Enable OCR fallback (`True` / `False`) |
-| `MAX_FILE_SIZE_MB` | Upload size limit |
+```text
+.env
+```
 
-## Local Run
+Add:
+
+```env
+GOOGLE_API_KEY=YOUR_API_KEY
+```
+
+---
+
+# Running The Application
 
 ```bash
 streamlit run app.py
 ```
 
-## Docker Deployment
+Application URL:
+
+```text
+http://localhost:8501
+```
+
+---
+
+# Docker Deployment
 
 Build:
 
@@ -113,65 +456,76 @@ Build:
 docker build -t fastigo-ai-pdf-chatbot .
 ```
 
-Run with persistence and secrets:
+Run:
 
 ```bash
-docker run -p 8501:8501 \
-  -e GOOGLE_API_KEY=your_api_key \
-  -v "%cd%/chromadb:/app/chromadb" \
-  fastigo-ai-pdf-chatbot
+docker run -p 8501:8501 ^
+-e GOOGLE_API_KEY=YOUR_API_KEY ^
+fastigo-ai-pdf-chatbot
 ```
 
-Or with Docker Compose:
+Docker Compose:
 
 ```bash
-GOOGLE_API_KEY=your_api_key docker compose up --build
+GOOGLE_API_KEY=YOUR_API_KEY docker compose up --build
 ```
 
-On Linux/macOS, replace the volume path with `$(pwd)/chromadb`.
+---
 
-## Streamlit Deployment Notes
+# Testing
 
-- The app binds to `0.0.0.0:8501` in Docker
-- Set `GOOGLE_API_KEY` in the deployment environment
-- Mount `CHROMA_DB_DIR` as a volume to preserve indexed vectors across restarts
-- Use **Reset session** in the sidebar to clear chat history and the vector collection
-
-## Troubleshooting
-
-| Issue | Likely Cause | Fix |
-|-------|--------------|-----|
-| Missing API key error | `GOOGLE_API_KEY` not set | Add it to `.env` or container env |
-| OCR returns empty text | Tesseract missing or OCR disabled | Install Tesseract or set `PDF_OCR_ENABLED=True` |
-| No relevant content found | PDF not indexed or poor match | Re-upload PDFs and ask a more specific question |
-| Embedding dimension error | Old Chroma data from previous version | Click **Reset session** or delete `chromadb/` |
-| Slow re-indexing on rerun | Same files already indexed | App skips duplicate indexing automatically |
-| Chat generation failed | Gemini quota/network/model issue | Verify API key, model name, and connectivity |
-
-## Testing
+Run:
 
 ```bash
-pytest tests/ -v
+pytest tests -v
 ```
 
-## Project Structure
+Expected Result:
 
 ```text
-app.py                  Streamlit UI
-src/chatbot.py          Gemini chat + streaming
-src/chunking.py         Chunking logic
-src/embeddings.py       Gemini embeddings
-src/hybrid_retriever.py Hybrid retrieval + MMR
-src/ocr_processor.py    OCR fallback
-src/pdf_processor.py    PDF text extraction
-src/prompts.py          Prompt templates
-src/utils.py            Session + upload helpers
-src/vector_store.py     ChromaDB integration
-tests/                  Unit tests
+10 Passed
 ```
 
-## Future Improvements
+---
 
-- PDF preview with citation highlighting
-- Cross-encoder reranking
-- Authentication and saved knowledge bases
+# Project Structure
+
+```text
+app.py
+
+src/
+├── chatbot.py
+├── chunking.py
+├── config.py
+├── embeddings.py
+├── hybrid_retriever.py
+├── logger.py
+├── ocr_processor.py
+├── pdf_processor.py
+├── prompts.py
+├── utils.py
+└── vector_store.py
+
+tests/
+```
+
+---
+
+# Future Improvements
+
+* PDF citation highlighting
+* Cross-encoder reranking
+* Authentication
+* Persistent user workspaces
+* Multi-user support
+* Cloud vector database integration
+
+---
+
+# Author
+
+Srujan Lakku
+
+GenAI Developer | Agentic AI Engineer
+
+Built as part of the Fastigo Technical Coding Assessment.
