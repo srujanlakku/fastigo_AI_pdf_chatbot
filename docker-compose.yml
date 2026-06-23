@@ -1,0 +1,13 @@
+services:
+  fastigo-pdf-chatbot:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      CHROMA_DB_DIR: /app/chromadb
+      PDF_OCR_ENABLED: "True"
+      EMBEDDING_DIMENSION: "768"
+    volumes:
+      - ./chromadb:/app/chromadb
+    restart: unless-stopped

@@ -1,0 +1,73 @@
+# Python
+
+**pycache**/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+
+env/
+venv/
+.venv/
+ENV/
+
+# Environment Variables
+
+.env
+.env.*
+*.env
+
+# Jupyter
+
+.ipynb_checkpoints/
+
+# OS Files
+
+.DS_Store
+Thumbs.db
+
+# Logs
+
+*.log
+logs/
+
+# Python Build Files
+
+build/
+dist/
+*.egg-info/
+
+# Pytest
+
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Streamlit
+
+.streamlit/secrets.toml
+streamlit_app.log
+
+# Chroma / Vector Databases
+
+chromadb/
+chroma_db/
+chromadb_test/
+chromadb_test_qf/
+
+# Runtime Data
+
+data/
+
+# VS Code
+
+.vscode/
+
+# Docker
+
+.dockerignore
+
+# Temporary Files
+
+*.tmp
+*.temp
