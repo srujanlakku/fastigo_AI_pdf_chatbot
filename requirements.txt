@@ -1,11 +1,32 @@
+# Pin transitive dependencies before ChromaDB to avoid resolver conflicts on Streamlit Cloud.
+protobuf>=4.25.0,<6.0.0
+opentelemetry-api==1.27.0
+opentelemetry-sdk==1.27.0
+opentelemetry-proto==1.27.0
+opentelemetry-exporter-otlp-proto-common==1.27.0
+opentelemetry-exporter-otlp-proto-grpc==1.27.0
+grpcio>=1.58.0,<2.0.0
+
+# Core app
 streamlit==1.58.0
+python-dotenv==1.1.0
+numpy>=1.26.0,<3.0.0
+
+# LangChain + Gemini
 langchain==1.3.11
 langchain-google-genai==4.2.5
 google-genai==2.9.0
+
+# Vector database (requires sqlite patch in src/cloud_bootstrap.py)
 chromadb==1.5.9
+pysqlite3-binary>=0.5.2; sys_platform != "win32"
+
+# PDF processing
 pymupdf==1.27.2.3
 pytesseract==0.3.13
 Pillow==12.2.0
+
+# Retrieval
 rank_bm25==0.2.2
 python-dotenv==1.1.0
 protobuf==4.25.3

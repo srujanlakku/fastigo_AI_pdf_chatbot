@@ -1,3 +1,7 @@
+from src.cloud_bootstrap import apply_cloud_runtime_patches
+
+apply_cloud_runtime_patches()
+
 import hashlib
 
 import streamlit as st

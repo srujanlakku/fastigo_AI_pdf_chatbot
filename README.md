@@ -448,6 +448,40 @@ http://localhost:8501
 
 ---
 
+# Streamlit Community Cloud Deployment
+
+This repository is configured for Streamlit Community Cloud with:
+
+| File | Purpose |
+|------|---------|
+| `runtime.txt` | Pins Python **3.11** (avoids Python 3.14 incompatibility) |
+| `requirements.txt` | Pinned ChromaDB, protobuf, and OpenTelemetry versions |
+| `packages.txt` | Installs `tesseract-ocr` for OCR |
+| `src/cloud_bootstrap.py` | SQLite + protobuf compatibility patches |
+| `.streamlit/config.toml` | Headless server settings |
+
+## Secrets
+
+In **App settings → Secrets**, add:
+
+```toml
+GOOGLE_API_KEY = "your_api_key"
+```
+
+## Main file
+
+```text
+app.py
+```
+
+## Notes
+
+- ChromaDB stores vectors in `/tmp/fastigo_chromadb` on Streamlit Cloud (ephemeral).
+- `pysqlite3-binary` is installed only on Linux (`sys_platform != "win32"`).
+- If deployment fails after dependency changes, use **Reboot app** in the Streamlit dashboard.
+
+---
+
 # Docker Deployment
 
 Build:

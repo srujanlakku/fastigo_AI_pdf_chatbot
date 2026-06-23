@@ -1,6 +1,10 @@
 import os
 from typing import Dict, List, Optional
 
+from src.cloud_bootstrap import apply_cloud_runtime_patches
+
+apply_cloud_runtime_patches()
+
 import chromadb
 from chromadb.api.models.Collection import Collection
 

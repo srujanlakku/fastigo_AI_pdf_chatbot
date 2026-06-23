@@ -5,7 +5,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-CHROMA_DB_DIR = os.getenv("CHROMA_DB_DIR", os.path.join(BASE_DIR, "chromadb"))
+
+
+def _default_chroma_path() -> str:
+    if os.getenv("CHROMA_DB_DIR"):
+        return os.getenv("CHROMA_DB_DIR", "")
+    # Streamlit Community Cloud mounts apps under /mount/src.
+    if os.path.isdir("/mount/src"):
+        return "/tmp/fastigo_chromadb"
+    return os.path.join(BASE_DIR, "chromadb")
+
+
+CHROMA_DB_DIR = _default_chroma_path()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 GOOGLE_API_PROJECT = os.getenv("GOOGLE_API_PROJECT", "")
 GOOGLE_API_LOCATION = os.getenv("GOOGLE_API_LOCATION", "us-central1")
